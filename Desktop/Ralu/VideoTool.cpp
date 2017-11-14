@@ -12,14 +12,18 @@
 #include <netinet/in.h>
 
 #include <string.h>
+#include <unistd.h>
+
 
 using namespace std;
 using namespace cv;
 //initial min and max HSV filter values.
 //these will be changed using trackbars
-//int H_MIN = 159;
-//int H_MAX = 298;
-//int S_MIN = 34;
+int H_MIN = 159;
+int H_MAX = 298;
+int S_MIN = 34;
+
+
 int S_MAX = 256;
 int V_MIN = 0;
 int V_MAX = 256;
@@ -28,6 +32,8 @@ int V_MAX = 256;
 int H2_MIN = 92;
 int H2_MAX = 22;
 int S2_MIN = 70;
+
+int X_AUX,Y_AUX, X1, X2, Y1, Y2;
 
 //default capture width and height
 const int FRAME_WIDTH = 640;
@@ -43,20 +49,24 @@ const std::string windowName1 = "HSV Image";
 const std::string windowName2 = "Thresholded Image";
 const std::string windowName3 = "After Morphological Operations";
 const std::string trackbarWindowName = "Trackbars";
+
 void miscare(char *ch)
 {
 	int sockfd, portno, n,i;
-   struct sockaddr_in serv_addr;
-   struct hostent *server;
+    struct sockaddr_in serv_addr;
+    struct hostent *server;
    
-   char aux[] = "fslsrsfs";
    
-   char buffer[256];
+    char *aux;
+	strcpy(ch,aux);
+	
    
-   if (argc < 3) {
-      fprintf(stderr,"usage %s hostname port\n", argv[0]);
-      exit(0);
-   }
+    char buffer[256];
+   
+   // if (argc < 3) {
+      // fprintf(stderr,"usage %s hostname port\n", argv[0]);
+      // exit(0);
+   // }
 	
    portno = 20232;
    
@@ -147,12 +157,15 @@ void createTrackbars() {
 	namedWindow(trackbarWindowName, 0);
 	//create memory to store trackbar name on window
 	char TrackbarName[50];
-	sprintf(TrackbarName, "H_MIN", H_MIN);
-	sprintf(TrackbarName, "H_MAX", H_MAX);
-	sprintf(TrackbarName, "S_MIN", S_MIN);
-	sprintf(TrackbarName, "S_MAX", S_MAX);
-	sprintf(TrackbarName, "V_MIN", V_MIN);
-	sprintf(TrackbarName, "V_MAX", V_MAX);
+	sprintf(TrackbarName, "H_MIN %d", H_MIN);
+	sprintf(TrackbarName, "H_MAX %d", H_MAX);
+	sprintf(TrackbarName, "S_MIN %d", S_MIN);
+	sprintf(TrackbarName, "H2_MIN %d", H2_MIN);
+	sprintf(TrackbarName, "H2_MAX %d", H2_MAX);
+	sprintf(TrackbarName, "S2_MIN %d", S2_MIN);
+	sprintf(TrackbarName, "S_MAX %d", S_MAX);
+	sprintf(TrackbarName, "V_MIN %d", V_MIN);
+	sprintf(TrackbarName, "V_MAX %d", V_MAX);
 	//create trackbars and insert them into window
 	//3 parameters are: the address of the variable that is changing when the trackbar is moved(eg.H_LOW),
 	//the max value the trackbar can move (eg. H_HIGH),
@@ -161,6 +174,9 @@ void createTrackbars() {
 	createTrackbar("H_MIN", trackbarWindowName, &H_MIN, H_MAX, on_trackbar);
 	createTrackbar("H_MAX", trackbarWindowName, &H_MAX, H_MAX, on_trackbar);
 	createTrackbar("S_MIN", trackbarWindowName, &S_MIN, S_MAX, on_trackbar);
+	createTrackbar("H_MIN", trackbarWindowName, &H2_MIN, H2_MAX, on_trackbar);
+	createTrackbar("H_MAX", trackbarWindowName, &H2_MAX, H2_MAX, on_trackbar);
+	createTrackbar("S_MIN", trackbarWindowName, &S2_MIN, S_MAX, on_trackbar);
 	createTrackbar("S_MAX", trackbarWindowName, &S_MAX, S_MAX, on_trackbar);
 	createTrackbar("V_MIN", trackbarWindowName, &V_MIN, V_MAX, on_trackbar);
 	createTrackbar("V_MAX", trackbarWindowName, &V_MAX, V_MAX, on_trackbar);
@@ -253,6 +269,10 @@ void trackFilteredObject(int &x, int &y, Mat threshold, Mat &cameraFeed) {
 				putText(cameraFeed, "Tracking Object", Point(0, 50), 2, 1, Scalar(0, 255, 0), 2);
 				//draw object location on screen
 				//cout << x << "," << y;
+				
+				X_AUX = x;
+				Y_AUX = y;
+				
 				drawObject(x, y, cameraFeed);
 
 			}
@@ -304,19 +324,35 @@ int main(int argc, char* argv[])
 		//filter HSV image between values and store filtered image to
 		//threshold matrix
 	  inRange(HSV, Scalar(H_MIN, S_MIN, V_MIN), Scalar(H_MAX, S_MAX, V_MAX), threshold);
-    inRange(HSV2, Scalar(H2_MIN, S2_MIN, V_MIN), Scalar(H2_MAX, S_MAX, V_MAX), threshold2);
+      inRange(HSV2, Scalar(H2_MIN, S2_MIN, V_MIN), Scalar(H2_MAX, S_MAX, V_MAX), threshold2);
 		//perform morphological operations on thresholded image to eliminate noise
 		//and emphasize the filtered object(s)
-		if (useMorphOps)
+		if (useMorphOps){
 			morphOps(threshold);
-      morphOps(threshold2);
-		//pass in thresholded frame to our object tracking function
+			morphOps(threshold2);
+		}
+	//pass in thresholded frame to our object tracking function
 		//this function will return the x and y coordinates of the
 		//filtered object
 		if (trackObjects){
 			trackFilteredObject(x, y, threshold, cameraFeed);
-      trackFilteredObject(x, y, threshold2, cameraFeed);
-      }
+			X1 = X_AUX;
+			Y1 = Y_AUX;
+			trackFilteredObject(x, y, threshold2, cameraFeed);
+			X2 = X_AUX;
+			Y2 = Y_AUX;
+        }
+		
+		if(X1 < X2)
+			miscare("ls");
+		else
+			miscare("rs");
+		
+		if(Y1 < Y2)
+			miscare("fs");
+		else
+			miscare("bs");
+	  
     
 		//show frames
 		imshow(windowName2, threshold);
